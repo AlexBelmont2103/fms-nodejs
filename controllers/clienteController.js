@@ -35,7 +35,11 @@ async function subirImagen(req) {
     stream.end(req.file.buffer);
   });
 }
-
+async function generarJWT(_cliente) {
+  let _jwt= jsonwebtoken.sign({nombre:_cliente.nombre, apellidos:_cliente.apellidos, email:_cliente.cuenta.email, idCliente:_cliente._id}, 
+    process.env.JWT_SECRETKEY, {expiresIn: '1h', issuer: 'http://localhost:5000'});
+  return _jwt;
+}
 function getPublicUrl(filename) {
   return `https://storage.googleapis.com/${process.env.FIREBASE_STORAGE_BUCKET}/${filename}`;
 }
@@ -148,6 +152,38 @@ module.exports = {
         error: error.message,
         otrosdatos: null,
         datoscliente: null,
+      });
+    }
+  },
+  login: async function (req, res) {
+    try{
+      let {email, password}= req.body;
+      //1º Comprobar si existe el cliente
+      let cliente = await Cliente.findOne({'cuenta.email':email});
+      if(!cliente) throw new Error('Email o contraseña incorrectos');
+      //2º Comprobar si la contraseña es correcta
+      let iguales = bcrypt.compareSync(password,cliente.cuenta.password);
+      if(!iguales) throw new Error('Email o contraseña incorrectos');
+      //3º Comprobar si la cuenta está activa
+      if(!cliente.cuenta.cuentaActiva) throw new Error('Cuenta no activa');
+      //4º Generar token de sesión
+      let _jwt= await generarJWT(cliente);
+      res.status(200).send({
+        codigo: 0,
+        mensaje: "Cliente logueado correctamente",
+        error: null,
+        otrosdatos: null,
+        datoscliente: cliente,
+        tokensesion: _jwt,
+      });
+    }catch(error){
+      res.status(500).send({
+        codigo: 1,
+        mensaje: "Error al intentar loguear cliente",
+        error: error.message,
+        otrosdatos: null,
+        datoscliente: null,
+        tokensesion: null,
       });
     }
   },

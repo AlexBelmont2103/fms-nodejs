@@ -26,4 +26,5 @@ const clienteController = require("../controllers/clienteController");
 router.post("/Registro", upload.single('imagenAvatar'), clienteController.registro);
 router.post("/ComprobarEmail", clienteController.comprobarEmail);
 router.post("/ComprobarLogin", clienteController.comprobarLogin);
+router.post("/Login", clienteController.login);
 module.exports = router;
