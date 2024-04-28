@@ -24,7 +24,7 @@ module.exports = {
   },
   recuperarAlbumes: async function (req, res) {
     try {
-      albumes = await Album.find();
+      const albumes = await Album.find();
       res.status(200).send({
         codigo: 0,
         mensaje: "Albumes recuperados",

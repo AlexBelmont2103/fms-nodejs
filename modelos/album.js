@@ -9,6 +9,7 @@ var albumSchema=new mongoose.Schema(
         imagenPortada: {type: String},
         numCanciones: {type: Number, required:[true,'* Número de canciones obligatorio']},
         precio: {type: Number, required:[true,'* Precio obligatorio']},
+        stock: {type: Number, required:[true,'* Stock obligatorio']},
     }
 );
 
