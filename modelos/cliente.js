@@ -13,6 +13,9 @@ var clienteSchema=new mongoose.Schema(
         },
         telefono:{type:String,required:false},
         fechaNacimiento:{type:Date,required:false},
+        direcciones:[
+            {type:mongoose.Schema.Types.ObjectId, ref:'Direccion'}
+        ]
     }
 );
 module.exports=mongoose.model('Cliente',clienteSchema,'clientes');
