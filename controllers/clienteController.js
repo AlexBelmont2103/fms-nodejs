@@ -7,6 +7,8 @@ const mailjet = Mailjet.apiConnect(
   process.env.MJ_APIKEY_PRIVATE
 );
 const Cliente = require("../modelos/cliente");
+const Direccion= require('../modelos/direccion');
+const Pedido= require('../modelos/pedido');
 admin.initializeApp({
   credential: admin.credential.cert(
     JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
@@ -159,13 +161,17 @@ module.exports = {
     try{
       let {email, password}= req.body;
       //1º Comprobar si existe el cliente
-      let cliente = await Cliente.findOne({'cuenta.email':email});
+      let cliente = await Cliente.findOne({'cuenta.email':email}).populate([
+        {path:'direcciones', model:'Direccion'},
+        {path:'pedidos', model:'Pedido'}
+      ])
       if(!cliente) throw new Error('Email o contraseña incorrectos');
       //2º Comprobar si la contraseña es correcta
       let iguales = bcrypt.compareSync(password,cliente.cuenta.password);
       if(!iguales) throw new Error('Email o contraseña incorrectos');
       //3º Comprobar si la cuenta está activa
       if(!cliente.cuenta.cuentaActiva) throw new Error('Cuenta no activa');
+
       //4º Generar token de sesión
       let _jwt= await generarJWT(cliente);
       res.status(200).send({

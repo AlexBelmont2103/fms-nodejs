@@ -15,6 +15,9 @@ var clienteSchema=new mongoose.Schema(
         fechaNacimiento:{type:Date,required:false},
         direcciones:[
             {type:mongoose.Schema.Types.ObjectId, ref:'Direccion'}
+        ],
+        pedidos:[
+            {type:mongoose.Schema.Types.ObjectId, ref:'Pedido'}
         ]
     }
 );
