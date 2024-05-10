@@ -171,9 +171,9 @@ module.exports = {
       if(!iguales) throw new Error('Email o contraseña incorrectos');
       //3º Comprobar si la cuenta está activa
       if(!cliente.cuenta.cuentaActiva) throw new Error('Cuenta no activa');
-
       //4º Generar token de sesión
       let _jwt= await generarJWT(cliente);
+      console.log('jwt generado', _jwt);
       res.status(200).send({
         codigo: 0,
         mensaje: "Cliente logueado correctamente",
@@ -186,6 +186,33 @@ module.exports = {
       res.status(500).send({
         codigo: 1,
         mensaje: "Error al intentar loguear cliente",
+        error: error.message,
+        otrosdatos: null,
+        datoscliente: null,
+        tokensesion: null,
+      });
+    }
+  },
+  recuperarCliente: async function (req, res) {
+    try {
+      let cliente = await Cliente.findById(req.params.id).populate([
+        {path:'direcciones', model:'Direccion'},
+        {path:'pedidos', model:'Pedido'}
+      ]);
+      if (!cliente) throw new Error("Cliente no encontrado");
+      let _jwt= await generarJWT(cliente);
+      res.status(200).send({
+        codigo: 0,
+        mensaje: "Cliente recuperado correctamente",
+        error: null,
+        otrosdatos: null,
+        datoscliente: cliente,
+        tokensesion: _jwt,
+      });
+    } catch (error) {
+      res.status(500).send({
+        codigo: 1,
+        mensaje: "Error al intentar recuperar cliente",
         error: error.message,
         otrosdatos: null,
         datoscliente: null,

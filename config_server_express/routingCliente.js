@@ -27,4 +27,5 @@ router.post("/Registro", upload.single('imagenAvatar'), clienteController.regist
 router.post("/ComprobarEmail", clienteController.comprobarEmail);
 router.post("/ComprobarLogin", clienteController.comprobarLogin);
 router.post("/Login", clienteController.login);
+router.get("/RecuperarCliente/:id", clienteController.recuperarCliente);
 module.exports = router;

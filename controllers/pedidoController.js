@@ -1,6 +1,16 @@
+const Pedido = require("../modelos/pedido");
+const Album = require("../modelos/album");
 const geoapi_key = process.env.GEOAPI_KEY;
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
-// Funciones auxiliares
+var paypal = require("paypal-rest-sdk");
+
+paypal.configure({
+  mode: "sandbox",
+  client_id: process.env.PAYPAL_CLIENT_ID,
+  client_secret: process.env.PAYPAL_SECRET_ID,
+});
+
+// #region Funciones auxiliares
 function calcularSubtotal(ElementosPedido) {
   let subtotal = 0;
   ElementosPedido.forEach((item) => {
@@ -29,19 +39,20 @@ function calcularGastosEnvio(direccionEnvio) {
 function calcularTotal(subtotal, gastosEnvio) {
   return Number((subtotal + gastosEnvio).toFixed(2));
 }
-async function crearPagoStripe(pedido) {
+// #endregion
+// #region Funciones de pago
+async function crearPagoStripe(datosPago, idPedido) {
   try {
-    console.log("Pedido", pedido.total);
     const customer = await stripe.customers.create({
-      name: pedido.nombreEnvio + " " + pedido.apellidosEnvio,
-      email: pedido.emailEnvio,
-      phone: pedido.telefonoContacto,
+      name: datosPago.nombreEnvio + " " + datosPago.apellidosEnvio,
+      email: datosPago.emailEnvio,
+      phone: datosPago.telefonoContacto,
       address: {
-        line1: pedido.direccionEnvio.calle,
-        city: pedido.direccionEnvio.municipio.DMUN50,
-        state: pedido.direccionEnvio.provincia.PRO,
-        country: pedido.direccionEnvio.pais,
-        postal_code: pedido.direccionEnvio.cp,
+        line1: datosPago.direccionEnvio.calle,
+        city: datosPago.direccionEnvio.municipio.DMUN50,
+        state: datosPago.direccionEnvio.provincia.PRO,
+        country: datosPago.direccionEnvio.pais,
+        postal_code: datosPago.direccionEnvio.cp,
       },
       source: "tok_visa",
     });
@@ -51,19 +62,99 @@ async function crearPagoStripe(pedido) {
     });
 
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(pedido.total.toFixed(2) * 100), // Stripe requiere el monto en centavos
+      amount: Math.round(datosPago.total.toFixed(2) * 100), // Stripe requiere el monto en centavos
       currency: "eur",
       customer: customer.id,
       payment_method: paymentMethod.id,
       off_session: true,
       confirm: true,
+      return_url: `http://localhost:5317/Pedido/PedidoFinalizado?idPedido=${idPedido}`,
     });
 
     console.log("PaymentIntent", paymentIntent);
+    if (paymentIntent.status === "succeeded") {
+      // Actualizar el pedido en la base de datos
+      await Pedido.findByIdAndUpdate(idPedido, { estadoPedido: "pagado" });
+      return {
+        status: "succeeded",
+        return_url: `/Pedido/PedidoFinalizado/${idPedido}`,
+      };
+    }
   } catch (error) {
     console.log(error);
   }
+  async function finalizarPagoConPaypal(req, res) {
+    // Crea un nuevo pedido en PayPal
+    let request = new checkoutNodeJssdk.orders.OrdersCreateRequest();
+    request.prefer("return=representation");
+    request.requestBody({
+      intent: "CAPTURE",
+      purchase_units: [
+        {
+          amount: {
+            currency_code: "USD",
+            value: "totalPedido", // reemplaza con el total del pedido
+          },
+        },
+      ],
+    });
+
+    let order;
+    try {
+      order = await client.execute(request);
+    } catch (err) {
+      // maneja el error
+      console.error(err);
+      return res.status(500).send({ error: err.message });
+    }
+
+    // Aquí puedes redirigir al usuario a la página de pago de PayPal
+    res.json({ orderID: order.result.id });
+  }
+  //#endregion
 }
+function finalizarPagoConPaypal(pedido, req, res) {
+  var create_payment_json = {
+    "intent": "sale",
+    "payer": {
+      "payment_method": "paypal"
+    },
+    "redirect_urls": {
+      "return_url": "http://return.url",
+      "cancel_url": "http://cancel.url"
+    },
+    "transactions": [{
+      "item_list": {
+        "items": pedido.elementosPedido.map(item => ({
+          "name": item.album.titulo,
+          "sku": item.album._id.toString(),
+          "price": item.album.precio.toString(),
+          "currency": "EUR",
+          "quantity": item.cantidad
+        }))
+      },
+      "amount": {
+        "currency": "EUR",
+        "total": pedido.totalPedido.toString()
+      },
+      "description": "Pedido de FullmetalStore"
+    }]
+  };
+
+  paypal.payment.create(create_payment_json, function (error, payment) {
+    if (error) {
+      console.log(error);
+      throw error;
+    } else {
+      for(let i = 0; i < payment.links.length; i++){
+        if(payment.links[i].rel === 'approval_url'){
+          res.redirect(payment.links[i].href);
+        }
+      }
+    }
+  });
+}
+// #endregion
 module.exports = {
   recuperarProvincias: async function (req, res) {
     try {
@@ -91,21 +182,55 @@ module.exports = {
     }
   },
   finalizarPedido: async function (req, res) {
-    //El token
     try {
-      const pedido = req.body;
-      pedido.subTotal = calcularSubtotal(pedido.ElementosPedido);
-      pedido.gastosEnvio = calcularGastosEnvio(pedido.direccionEnvio);
-      pedido.total = calcularTotal(pedido.subTotal, pedido.gastosEnvio);
-      const fechaCaducidad = pedido.mescard + "/" + pedido.aniocard;
-      console.log(pedido);
-
-      let respuestaStripe = await crearPagoStripe(pedido);
-      console.log(respuestaStripe);
-      //res.status(200).send({pedido: pedido});
+      const datosPago = req.body;
+      datosPago.subTotal = calcularSubtotal(datosPago.ElementosPedido);
+      datosPago.gastosEnvio = calcularGastosEnvio(datosPago.direccionEnvio);
+      datosPago.total = calcularTotal(
+        datosPago.subTotal,
+        datosPago.gastosEnvio
+      );
+      const _pedido = new Pedido({
+        fechaPedido: new Date(),
+        estadoPedido: "pendiente de pago",
+        elementosPedido: datosPago.ElementosPedido,
+        subtotalPedido: datosPago.subTotal,
+        gastosPedido: datosPago.gastosEnvio,
+        totalPedido: datosPago.total,
+        direccionEnvio: datosPago.direccionEnvio,
+        direccionFacturacion: datosPago.direccionFactura,
+      });
+      //Guardar el pedido en la base de datos
+      console.log(_pedido);
+      await _pedido.save();
+      if (datosPago.tipoPago === "pagoTarjeta") {
+        let respuestaStripe = await crearPagoStripe(datosPago, _pedido._id);
+        console.log(respuestaStripe);
+        res.status(200).send({ return_url: respuestaStripe.return_url });
+      }else{
+        finalizarPagoConPaypal(_pedido, req, res);
+      }
     } catch (error) {
       console.log(error);
       //res.status(500).send({});
+    }
+  },
+  actualizarPedido: async function (req, res) {
+    try {
+      let idPedido = req.params.idPedido;
+      console.log("idPedido", idPedido);
+      let pedido = await Pedido.findById(idPedido);
+      pedido.estadoPedido = "pagado";
+      //Actualizar el stock de los álbumes
+      pedido.elementosPedido.forEach(async (elemento) => {
+        let album = await Album.findById(elemento.album);
+        album.stock -= elemento.cantidad;
+        await album.save();
+      });
+      await pedido.save();
+      res.status(200).send({ mensaje: "Pedido actualizado correctamente", pedido: pedido});
+    } catch (error) {
+      res.status(500).send({ mensaje: "Error al intentar actualizar el pedido" });
     }
   },
 };

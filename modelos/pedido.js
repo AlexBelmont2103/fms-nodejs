@@ -1,20 +1,22 @@
 var mongoose=require('mongoose');
-
+var Album=require('./album');
+var Direccion=require('./direccion');
 var pedidoSchema= new mongoose.Schema(
     {
         fechaPedido:{type:Date, default:Date.now()},
         estadoPedido:{type:String, default:'pendiente de pago'},
         elementosPedido:[
             {
-                album:{type: mongoose.Schema.Types.ObjectId, ref:'Libro'},
+                _id:false,
+                album: {type:Album.schema, required:true},
                 cantidad:{type: Number, required:true, default:1}
             }
         ],
         subtotalPedido:{type:Number, default:0},
         gastosPedido:{type:Number, default:0},
         totalPedido:{type:Number, default:0},
-        direccionEnvio:{type: mongoose.Schema.Types.ObjectId, ref:'Direccion'},
-        direccionFacturacion:{type: mongoose.Schema.Types.ObjectId, ref:'Direccion'}
+        direccionEnvio:{type: Direccion.schema, required:true, _id:false},
+        direccionFacturacion:{type: Direccion.schema, required:true, id:false}
     }
 );
 
