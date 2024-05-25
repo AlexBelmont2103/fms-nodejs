@@ -2,14 +2,9 @@ const Pedido = require("../modelos/pedido");
 const Album = require("../modelos/album");
 const geoapi_key = process.env.GEOAPI_KEY;
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
-var paypal = require("paypal-rest-sdk");
-
-paypal.configure({
-  mode: "sandbox",
-  client_id: process.env.PAYPAL_CLIENT_ID,
-  client_secret: process.env.PAYPAL_SECRET_ID,
-});
-
+const checkoutNodeJssdk = require('@paypal/checkout-server-sdk');
+const environment = new checkoutNodeJssdk.core.SandboxEnvironment(process.env.PAYPAL_CLIENT_ID, process.env.PAYPAL_SECRET_ID);
+const client = new checkoutNodeJssdk.core.PayPalHttpClient(environment);
 // #region Funciones auxiliares
 function calcularSubtotal(ElementosPedido) {
   let subtotal = 0;
@@ -83,76 +78,36 @@ async function crearPagoStripe(datosPago, idPedido) {
   } catch (error) {
     console.log(error);
   }
-  async function finalizarPagoConPaypal(req, res) {
-    // Crea un nuevo pedido en PayPal
-    let request = new checkoutNodeJssdk.orders.OrdersCreateRequest();
+}
+async function finalizarPagoConPaypal(pedido, req, res) {
+  try{
+    const request = new checkoutNodeJssdk.orders.OrdersCreateRequest();
     request.prefer("return=representation");
     request.requestBody({
       intent: "CAPTURE",
       purchase_units: [
         {
           amount: {
-            currency_code: "USD",
-            value: "totalPedido", // reemplaza con el total del pedido
+            currency_code: "EUR",
+            value: pedido.totalPedido,
           },
         },
       ],
+      application_context: {
+        return_url: `http://localhost:5000/api/Pedido/PaypalCallback?idPedido=${pedido._id}`,
+        cancel_url: 'https://www.google.es'
+      }
     });
-
-    let order;
-    try {
-      order = await client.execute(request);
-    } catch (err) {
-      // maneja el error
-      console.error(err);
-      return res.status(500).send({ error: err.message });
-    }
-
-    // Aquí puedes redirigir al usuario a la página de pago de PayPal
-    res.json({ orderID: order.result.id });
-  }
-  //#endregion
-}
-function finalizarPagoConPaypal(pedido, req, res) {
-  var create_payment_json = {
-    "intent": "sale",
-    "payer": {
-      "payment_method": "paypal"
-    },
-    "redirect_urls": {
-      "return_url": "http://return.url",
-      "cancel_url": "http://cancel.url"
-    },
-    "transactions": [{
-      "item_list": {
-        "items": pedido.elementosPedido.map(item => ({
-          "name": item.album.titulo,
-          "sku": item.album._id.toString(),
-          "price": item.album.precio.toString(),
-          "currency": "EUR",
-          "quantity": item.cantidad
-        }))
-      },
-      "amount": {
-        "currency": "EUR",
-        "total": pedido.totalPedido.toString()
-      },
-      "description": "Pedido de FullmetalStore"
-    }]
-  };
-
-  paypal.payment.create(create_payment_json, function (error, payment) {
-    if (error) {
-      console.log(error);
-      throw error;
-    } else {
-      for(let i = 0; i < payment.links.length; i++){
-        if(payment.links[i].rel === 'approval_url'){
-          res.redirect(payment.links[i].href);
-        }
+    const response = await client.execute(request);
+    for (let link of response.result.links) {
+      console.log(link);
+      if (link.rel === "approve") {
+        res.status(200).send({ approval_url: link.href });
       }
     }
-  });
+  }catch(error){
+    res.status(500).send({});
+  }
 }
 // #endregion
 module.exports = {
@@ -207,8 +162,8 @@ module.exports = {
         let respuestaStripe = await crearPagoStripe(datosPago, _pedido._id);
         console.log(respuestaStripe);
         res.status(200).send({ return_url: respuestaStripe.return_url });
-      }else{
-        finalizarPagoConPaypal(_pedido, req, res);
+      } else {
+        await finalizarPagoConPaypal(_pedido, req, res);
       }
     } catch (error) {
       console.log(error);
@@ -228,9 +183,28 @@ module.exports = {
         await album.save();
       });
       await pedido.save();
-      res.status(200).send({ mensaje: "Pedido actualizado correctamente", pedido: pedido});
+      res
+        .status(200)
+        .send({ mensaje: "Pedido actualizado correctamente", pedido: pedido });
     } catch (error) {
-      res.status(500).send({ mensaje: "Error al intentar actualizar el pedido" });
+      res
+        .status(500)
+        .send({ mensaje: "Error al intentar actualizar el pedido" });
     }
   },
+  paypalCallback: async function (req, res) {
+    try {
+      const idPedido = req.query.idPedido;
+      const token = req.query.token;
+      const payerId = req.query.PayerID;
+      const request = new checkoutNodeJssdk.orders.OrdersCaptureRequest(token);
+      request.requestBody({});
+      const response = await client.execute(request);
+      console.log('Redirigiendo a la página de pedido finalizado');
+      res.status(200).redirect(`http://localhost:5173/Pedido/PedidoFinalizado?idPedido=${idPedido}`);
+    } catch (error) {
+      console.log(error);
+      res.status(500).send({});
+    }
+  }
 };

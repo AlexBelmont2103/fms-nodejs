@@ -27,4 +27,5 @@ router.get("/RecuperarProvincias", pedidoController.recuperarProvincias);
 router.get("/RecuperarMunicipios/:CPRO", pedidoController.recuperarMunicipios);
 router.post("/FinalizarPedido", checkJWT, pedidoController.finalizarPedido);
 router.get("/ActualizarPedido/:idPedido",pedidoController.actualizarPedido);
+router.get("/paypalCallback", pedidoController.paypalCallback);
 module.exports = router;

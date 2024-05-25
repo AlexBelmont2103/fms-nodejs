@@ -7,7 +7,7 @@ module.exports = function (serverExpress) {
   serverExpress.use(cookieParser());
   serverExpress.use(bodyParser.json());
   serverExpress.use(bodyParser.urlencoded({ extended: true }));
-  serverExpress.use(cors());
+  serverExpress.use(cors({ origin: '*' }));
 
   //Middleware propios
   config_router_middleware(serverExpress);
