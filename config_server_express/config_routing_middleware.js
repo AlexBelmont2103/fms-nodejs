@@ -7,5 +7,5 @@ module.exports = function (serverExpress) {
     serverExpress.use('/api/Cliente', routingCliente);
     serverExpress.use('/api/Tienda', routingTienda);
     serverExpress.use('/api/Pedido', routingPedido);
-    serverExpress.use('api/Juego',routingJuego);
+    serverExpress.use('/api/Juego',routingJuego);
 };
