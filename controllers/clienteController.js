@@ -69,7 +69,7 @@ module.exports = {
       }).save();
       //3º enviar email de confirmación
       const idCliente = cliente._id;
-      const mensaje = mailjet.post("send", { version: "v3.1" }).request({
+      const mensaje = Mailjet.post("send", { version: "v3.1" }).request({
         Messages: [
           {
             From: {
