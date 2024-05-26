@@ -1,9 +1,13 @@
 const Pedido = require("../modelos/pedido");
 const Album = require("../modelos/album");
+const Cliente = require("../modelos/cliente");
 const geoapi_key = process.env.GEOAPI_KEY;
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
-const checkoutNodeJssdk = require('@paypal/checkout-server-sdk');
-const environment = new checkoutNodeJssdk.core.SandboxEnvironment(process.env.PAYPAL_CLIENT_ID, process.env.PAYPAL_SECRET_ID);
+const checkoutNodeJssdk = require("@paypal/checkout-server-sdk");
+const environment = new checkoutNodeJssdk.core.SandboxEnvironment(
+  process.env.PAYPAL_CLIENT_ID,
+  process.env.PAYPAL_SECRET_ID
+);
 const client = new checkoutNodeJssdk.core.PayPalHttpClient(environment);
 // #region Funciones auxiliares
 function calcularSubtotal(ElementosPedido) {
@@ -33,6 +37,19 @@ function calcularGastosEnvio(direccionEnvio) {
 }
 function calcularTotal(subtotal, gastosEnvio) {
   return Number((subtotal + gastosEnvio).toFixed(2));
+}
+async function generarJWT(cliente) {
+  let _jwt = jsonwebtoken.sign(
+    {
+      nombre: _cliente.nombre,
+      apellidos: _cliente.apellidos,
+      email: _cliente.cuenta.email,
+      idCliente: _cliente._id,
+    },
+    process.env.JWT_SECRETKEY,
+    { expiresIn: "1h", issuer: "http://localhost:5000" }
+  );
+  return _jwt;
 }
 // #endregion
 // #region Funciones de pago
@@ -72,7 +89,8 @@ async function crearPagoStripe(datosPago, idPedido) {
       await Pedido.findByIdAndUpdate(idPedido, { estadoPedido: "pagado" });
       return {
         status: "succeeded",
-        return_url: `/Pedido/PedidoFinalizado/${idPedido}`,
+        mensaje: "Pago realizado correctamente",
+        return_url: `Pedido/PedidoFinalizado?idPedido=${idPedido}`,
       };
     }
   } catch (error) {
@@ -80,7 +98,7 @@ async function crearPagoStripe(datosPago, idPedido) {
   }
 }
 async function finalizarPagoConPaypal(pedido, req, res) {
-  try{
+  try {
     const request = new checkoutNodeJssdk.orders.OrdersCreateRequest();
     request.prefer("return=representation");
     request.requestBody({
@@ -95,8 +113,8 @@ async function finalizarPagoConPaypal(pedido, req, res) {
       ],
       application_context: {
         return_url: `http://localhost:5000/api/Pedido/PaypalCallback?idPedido=${pedido._id}`,
-        cancel_url: 'https://www.google.es'
-      }
+        cancel_url: "https://www.google.es",
+      },
     });
     const response = await client.execute(request);
     for (let link of response.result.links) {
@@ -105,7 +123,7 @@ async function finalizarPagoConPaypal(pedido, req, res) {
         res.status(200).send({ approval_url: link.href });
       }
     }
-  }catch(error){
+  } catch (error) {
     res.status(500).send({});
   }
 }
@@ -138,6 +156,7 @@ module.exports = {
   },
   finalizarPedido: async function (req, res) {
     try {
+      console.log(req.payload);
       const datosPago = req.body;
       datosPago.subTotal = calcularSubtotal(datosPago.ElementosPedido);
       datosPago.gastosEnvio = calcularGastosEnvio(datosPago.direccionEnvio);
@@ -156,12 +175,16 @@ module.exports = {
         direccionFacturacion: datosPago.direccionFactura,
       });
       //Guardar el pedido en la base de datos
-      console.log(_pedido);
       await _pedido.save();
+      //añadir el id del pedido al array de pedidos del cliente
+      const idCliente = req.payload.idCliente;
+      const cliente = await Cliente.findByIdAndUpdate(idCliente, {
+        $push: { pedidos: _pedido._id },
+      });
       if (datosPago.tipoPago === "pagoTarjeta") {
         let respuestaStripe = await crearPagoStripe(datosPago, _pedido._id);
         console.log(respuestaStripe);
-        res.status(200).send({ return_url: respuestaStripe.return_url });
+        res.status(200).send(respuestaStripe);
       } else {
         await finalizarPagoConPaypal(_pedido, req, res);
       }
@@ -183,9 +206,21 @@ module.exports = {
         await album.save();
       });
       await pedido.save();
+      // Recuperar cliente por el id del pedido
+      const cliente = await Cliente.findOne({ pedidos: idPedido }).populate([
+        { path: "direcciones", model: "Direccion" },
+        { path: "pedidos", model: "Pedido" },
+      ]);
+      const jwt = await generarJWT(cliente);
       res
         .status(200)
-        .send({ mensaje: "Pedido actualizado correctamente", pedido: pedido });
+        .send({ 
+          codigo: 0,
+          mensaje: "Pedido actualizado correctamente", 
+          pedido: pedido ,
+          datoscliente: cliente,
+          tokensesion: jwt
+        });
     } catch (error) {
       res
         .status(500)
@@ -200,11 +235,15 @@ module.exports = {
       const request = new checkoutNodeJssdk.orders.OrdersCaptureRequest(token);
       request.requestBody({});
       const response = await client.execute(request);
-      console.log('Redirigiendo a la página de pedido finalizado');
-      res.status(200).redirect(`http://localhost:5173/Pedido/PedidoFinalizado?idPedido=${idPedido}`);
+      console.log("Redirigiendo a la página de pedido finalizado");
+      res
+        .status(200)
+        .redirect(
+          `http://localhost:5173/Pedido/PedidoFinalizado?idPedido=${idPedido}`
+        );
     } catch (error) {
       console.log(error);
       res.status(500).send({});
     }
-  }
+  },
 };

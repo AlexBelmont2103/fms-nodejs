@@ -2,19 +2,11 @@ const admin = require("firebase-admin");
 const bcrypt = require("bcrypt");
 const Mailjet = require("node-mailjet");
 const jsonwebtoken = require("jsonwebtoken");
-const mailjet = Mailjet.apiConnect(
-  process.env.MJ_APIKEY_PUBLIC,
-  process.env.MJ_APIKEY_PRIVATE
-);
+
 const Cliente = require("../modelos/cliente");
-const Direccion= require('../modelos/direccion');
-const Pedido= require('../modelos/pedido');
-admin.initializeApp({
-  credential: admin.credential.cert(
-    JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
-  ),
-  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-});
+const Direccion = require("../modelos/direccion");
+const Pedido = require("../modelos/pedido");
+
 async function subirImagen(req) {
   return new Promise((resolve, reject) => {
     const fileName = `Avatares/${req.body.login}.png`; // Modifica el nombre del archivo para que coincida con el email del usuario
@@ -38,8 +30,16 @@ async function subirImagen(req) {
   });
 }
 async function generarJWT(_cliente) {
-  let _jwt= jsonwebtoken.sign({nombre:_cliente.nombre, apellidos:_cliente.apellidos, email:_cliente.cuenta.email, idCliente:_cliente._id}, 
-    process.env.JWT_SECRETKEY, {expiresIn: '1h', issuer: 'http://localhost:5000'});
+  let _jwt = jsonwebtoken.sign(
+    {
+      nombre: _cliente.nombre,
+      apellidos: _cliente.apellidos,
+      email: _cliente.cuenta.email,
+      idCliente: _cliente._id,
+    },
+    process.env.JWT_SECRETKEY,
+    { expiresIn: "1h", issuer: "http://localhost:5000" }
+  );
   return _jwt;
 }
 function getPublicUrl(filename) {
@@ -88,12 +88,13 @@ module.exports = {
           },
         ],
       });
-      mensaje.then((result) => {
-        console.log(result.body);
-      })
-      .catch((err) => {
-        console.log(err.statusCode);
-      });
+      mensaje
+        .then((result) => {
+          console.log(result.body);
+        })
+        .catch((err) => {
+          console.log(err.statusCode);
+        });
       res.status(200).send({
         codigo: 0,
         mensaje: "Cliente registrado correctamente",
@@ -105,6 +106,21 @@ module.exports = {
       res.status(500).send({
         codigo: 1,
         mensaje: "Error al intentar registrar cliente",
+        error: error.message,
+        otrosdatos: null,
+        datoscliente: null,
+      });
+    }
+  },
+  activarCuenta: async function (req, res) {
+    try{
+      let idCliente = req.params.id;
+      let cliente = await Cliente.findByIdAndUpdate(idCliente, { "cuenta.cuentaActiva": true });
+      res.status(200).redirect("http://localhost:5173/Tienda/Albumes");
+    }catch(error){
+      res.status(500).send({
+        codigo: 1,
+        mensaje: "Error al intentar activar cuenta",
         error: error.message,
         otrosdatos: null,
         datoscliente: null,
@@ -158,22 +174,23 @@ module.exports = {
     }
   },
   login: async function (req, res) {
-    try{
-      let {email, password}= req.body;
+    try {
+      console.log("datos recibidos en el servidor...", req.body);
+      let { email, password } = req.body;
       //1º Comprobar si existe el cliente
-      let cliente = await Cliente.findOne({'cuenta.email':email}).populate([
-        {path:'direcciones', model:'Direccion'},
-        {path:'pedidos', model:'Pedido'}
-      ])
-      if(!cliente) throw new Error('Email o contraseña incorrectos');
+      let cliente = await Cliente.findOne({ "cuenta.email": email }).populate([
+        { path: "direcciones", model: "Direccion" },
+        { path: "pedidos", model: "Pedido" },
+      ]);
+      if (!cliente) throw new Error("Email o contraseña incorrectos");
       //2º Comprobar si la contraseña es correcta
-      let iguales = bcrypt.compareSync(password,cliente.cuenta.password);
-      if(!iguales) throw new Error('Email o contraseña incorrectos');
+      let iguales = bcrypt.compareSync(password, cliente.cuenta.password);
+      if (!iguales) throw new Error("Email o contraseña incorrectos");
       //3º Comprobar si la cuenta está activa
-      if(!cliente.cuenta.cuentaActiva) throw new Error('Cuenta no activa');
+      if (!cliente.cuenta.cuentaActiva) throw new Error("Cuenta no activa");
       //4º Generar token de sesión
-      let _jwt= await generarJWT(cliente);
-      console.log('jwt generado', _jwt);
+      let _jwt = await generarJWT(cliente);
+
       res.status(200).send({
         codigo: 0,
         mensaje: "Cliente logueado correctamente",
@@ -182,7 +199,7 @@ module.exports = {
         datoscliente: cliente,
         tokensesion: _jwt,
       });
-    }catch(error){
+    } catch (error) {
       res.status(500).send({
         codigo: 1,
         mensaje: "Error al intentar loguear cliente",
@@ -196,11 +213,11 @@ module.exports = {
   recuperarCliente: async function (req, res) {
     try {
       let cliente = await Cliente.findById(req.params.id).populate([
-        {path:'direcciones', model:'Direccion'},
-        {path:'pedidos', model:'Pedido'}
+        { path: "direcciones", model: "Direccion" },
+        { path: "pedidos", model: "Pedido" },
       ]);
       if (!cliente) throw new Error("Cliente no encontrado");
-      let _jwt= await generarJWT(cliente);
+      let _jwt = await generarJWT(cliente);
       res.status(200).send({
         codigo: 0,
         mensaje: "Cliente recuperado correctamente",
@@ -220,4 +237,7 @@ module.exports = {
       });
     }
   },
+  actualizarCliente:async function(req,res){},
+  actualizarAvatar:async function(req,res){},
+
 };
