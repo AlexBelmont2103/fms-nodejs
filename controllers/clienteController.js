@@ -1,16 +1,37 @@
 const admin = require("firebase-admin");
+const uuid = require("uuid");
 const bcrypt = require("bcrypt");
 const Mailjet = require("node-mailjet");
+const mailjet = Mailjet.apiConnect(
+  process.env.MJ_APIKEY_PUBLIC,
+  process.env.MJ_APIKEY_PRIVATE
+);
 const jsonwebtoken = require("jsonwebtoken");
-
 const Cliente = require("../modelos/cliente");
 const Direccion = require("../modelos/direccion");
 const Pedido = require("../modelos/pedido");
+//#region funciones auxiliares
+async function borrarImagen(urlImagen) {
+  const bucket = admin.storage().bucket();
 
+  // Extrae el nombre del archivo de la URL
+  const nombreArchivo = urlImagen.split("/").pop();
+
+  try {
+    await bucket.file(nombreArchivo).delete();
+    console.log(`Archivo ${nombreArchivo} borrado.`);
+  } catch (error) {
+    console.error(`Error al borrar el archivo ${nombreArchivo}:`, error);
+  }
+}
 async function subirImagen(req) {
   return new Promise((resolve, reject) => {
-    const fileName = `Avatares/${req.body.login}.png`; // Modifica el nombre del archivo para que coincida con el email del usuario
-    const file = admin.storage().bucket().file(fileName);
+    const timestamp = Date.now();
+    const idImagen = uuid.v4(); // Genera un ID único para la imagen
+    const fileName = `Avatares/${idImagen}_${timestamp}.png`;
+    const bucketName = process.env.FIREBASE_STORAGE_BUCKET.split("/")[2];
+    const bucket = admin.storage().bucket(bucketName);
+    const file = bucket.file(fileName);
     const stream = file.createWriteStream({
       metadata: {
         contentType: req.file.mimetype,
@@ -18,16 +39,24 @@ async function subirImagen(req) {
     });
 
     stream.on("error", (err) => {
+      req.file.cloudStorageError = err;
       reject(err);
     });
 
-    stream.on("finish", async () => {
-      await file.makePublic();
-      resolve(getPublicUrl(fileName));
+    stream.on("finish", () => {
+      req.file.cloudStorageObject = fileName;
+      file.makePublic().then(() => {
+        req.file.cloudStoragePublicUrl = getPublicUrl(bucket, fileName);
+        resolve(req.file.cloudStoragePublicUrl);
+      });
     });
 
     stream.end(req.file.buffer);
   });
+}
+
+function getPublicUrl(bucket, filename) {
+  return `https://storage.googleapis.com/${bucket.name}/${filename}`;
 }
 async function generarJWT(_cliente) {
   let _jwt = jsonwebtoken.sign(
@@ -42,18 +71,11 @@ async function generarJWT(_cliente) {
   );
   return _jwt;
 }
-function getPublicUrl(filename) {
-  return `https://storage.googleapis.com/${process.env.FIREBASE_STORAGE_BUCKET}/${filename}`;
-}
+//#endregion
 module.exports = {
   registro: async function (req, res) {
     try {
-      console.log("datos recibidos en el servidor...", req.body);
-      console.log("imagen recibida en el servidor...", req.file);
-      //1º manejar la subida de la imagen
-      const urlImagen = await subirImagen(req);
-      console.log("urlImagen", urlImagen);
-      //2º registrar el cliente
+      //1º registrar el cliente
       let cliente = await new Cliente({
         nombre: req.body.nombre,
         apellidos: req.body.apellidos,
@@ -62,14 +84,21 @@ module.exports = {
           password: bcrypt.hashSync(req.body.password, 10),
           cuentaActiva: false,
           login: req.body.login,
-          imagenAvatar: urlImagen,
         },
         telefono: req.body.telefono,
         fechaNacimiento: req.body.fechaNacimiento,
       }).save();
+
+      //2º manejar la subida de la imagen
+      const urlImagen = await subirImagen(req);
+      console.log("urlImagen", urlImagen);
+
+      // Actualizar el cliente con la url de la imagen
+      cliente.cuenta.imagenAvatar = urlImagen;
+      await cliente.save();
       //3º enviar email de confirmación
       const idCliente = cliente._id;
-      const mensaje = Mailjet.post("send", { version: "v3.1" }).request({
+      const mensaje = mailjet.post("send", { version: "v3.1" }).request({
         Messages: [
           {
             From: {
@@ -113,11 +142,13 @@ module.exports = {
     }
   },
   activarCuenta: async function (req, res) {
-    try{
+    try {
       let idCliente = req.params.id;
-      let cliente = await Cliente.findByIdAndUpdate(idCliente, { "cuenta.cuentaActiva": true });
+      let cliente = await Cliente.findByIdAndUpdate(idCliente, {
+        "cuenta.cuentaActiva": true,
+      });
       res.status(200).redirect("http://localhost:5173/Tienda/Albumes");
-    }catch(error){
+    } catch (error) {
       res.status(500).send({
         codigo: 1,
         mensaje: "Error al intentar activar cuenta",
@@ -237,7 +268,68 @@ module.exports = {
       });
     }
   },
-  actualizarCliente:async function(req,res){},
-  actualizarAvatar:async function(req,res){},
-
+  actualizarDatosCliente: async function (req, res) {
+    try{
+      console.log('datos recibidos en el servidor...',req.payload);
+      console.log('datos recibidos en el servidor...',req.body);
+      let {nombre, apellidos, email} = req.body;
+      let cliente = await Cliente.findByIdAndUpdate(req.payload.idCliente,{
+        nombre: nombre,
+        apellidos: apellidos,
+        "cuenta.email": email
+      },{new: true});
+      let _jwt = await generarJWT(cliente);
+      res.status(200).send({
+        codigo: 0,
+        mensaje: "Datos cliente actualizados correctamente",
+        error: null,
+        otrosdatos: null,
+        datoscliente: cliente,
+        tokensesion: _jwt,
+      });
+    }catch(error){
+      res.status(500).send({
+        codigo: 1,
+        mensaje: "Error al intentar actualizar datos cliente",
+        error: error.message,
+        otrosdatos: null,
+        datoscliente: null,
+      });
+    }
+  },
+  actualizarAvatar: async function (req, res) {
+    try {
+      console.log("datos recibidos en el servidor...", req.body);
+      console.log("imagen recibida en el servidor...", req.file);
+      //1ºBorrar la imagen anterior
+      await borrarImagen(req.body.idCliente);
+      //2ºSubir la nueva imagen
+      const urlImagen = await subirImagen(req, req.body.idCliente);
+      console.log("urlImagen", urlImagen);
+      //3ºActualizar el cliente con la nueva imagen
+      let cliente = await Cliente.findById(req.body.idCliente);
+      console.log("Url de la imagen anterior...", cliente.cuenta.imagenAvatar);
+      console.log("Url de la imagen nueva...", urlImagen);
+      cliente.cuenta.imagenAvatar = urlImagen;
+      await cliente.save();
+      let _jwt = await generarJWT(cliente);
+      console.log("cliente actualizado...", cliente);
+      res.status(200).send({
+        codigo: 0,
+        mensaje: "Avatar actualizado correctamente",
+        error: null,
+        otrosdatos: null,
+        datoscliente: cliente,
+        tokensesion: _jwt,
+      });
+    } catch (error) {
+      res.status(500).send({
+        codigo: 1,
+        mensaje: "Error al intentar actualizar avatar",
+        error: error.message,
+        otrosdatos: null,
+        datoscliente: null,
+      });
+    }
+  },
 };
