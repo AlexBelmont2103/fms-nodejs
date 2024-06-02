@@ -277,7 +277,10 @@ module.exports = {
         nombre: nombre,
         apellidos: apellidos,
         "cuenta.email": email
-      },{new: true});
+      },{new: true}).populate([
+        {path: 'direcciones', model: 'Direccion'},
+        {path: 'pedidos', model: 'Pedido'}
+        ]);
       let _jwt = await generarJWT(cliente);
       res.status(200).send({
         codigo: 0,
@@ -307,7 +310,10 @@ module.exports = {
       const urlImagen = await subirImagen(req, req.body.idCliente);
       console.log("urlImagen", urlImagen);
       //3ºActualizar el cliente con la nueva imagen
-      let cliente = await Cliente.findById(req.body.idCliente);
+      let cliente = await Cliente.findById(req.body.idCliente).populate([
+        { path: "direcciones", model: "Direccion" },
+        { path: "pedidos", model: "Pedido" },
+      ]);
       console.log("Url de la imagen anterior...", cliente.cuenta.imagenAvatar);
       console.log("Url de la imagen nueva...", urlImagen);
       cliente.cuenta.imagenAvatar = urlImagen;
