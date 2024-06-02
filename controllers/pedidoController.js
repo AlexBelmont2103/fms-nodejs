@@ -42,10 +42,10 @@ function calcularTotal(subtotal, gastosEnvio) {
 async function generarJWT(cliente) {
   let _jwt = jsonwebtoken.sign(
     {
-      nombre: _cliente.nombre,
-      apellidos: _cliente.apellidos,
-      email: _cliente.cuenta.email,
-      idCliente: _cliente._id,
+      nombre: cliente.nombre,
+      apellidos: cliente.apellidos,
+      email: cliente.cuenta.email,
+      idCliente: cliente._id,
     },
     process.env.JWT_SECRETKEY,
     { expiresIn: "1h", issuer: "http://localhost:5000" }
@@ -208,11 +208,19 @@ module.exports = {
         await album.save();
       });
       await pedido.save();
-
+      //Recuperamos el cliente utilizando el id del pedido
+      let cliente = await Cliente.findOne({ pedidos: idPedido }).populate([
+        { path: "direcciones", model: "Direccion" },
+        { path: "pedidos", model: "Pedido" },
+      ]);
+      //Generamos un token JWT
+      let _jwt = await generarJWT(cliente);
       res.status(200).send({
         codigo: 0,
         mensaje: "Pedido actualizado correctamente",
         pedido: pedido,
+        datoscliente: cliente,
+        tokensesion: _jwt,
       });
     } catch (error) {
       res.status(500).send({
