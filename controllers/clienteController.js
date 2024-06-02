@@ -249,6 +249,7 @@ module.exports = {
       ]);
       if (!cliente) throw new Error("Cliente no encontrado");
       let _jwt = await generarJWT(cliente);
+      console.log("cliente recuperado...", cliente);
       res.status(200).send({
         codigo: 0,
         mensaje: "Cliente recuperado correctamente",

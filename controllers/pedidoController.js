@@ -1,3 +1,4 @@
+const jsonwebtoken = require("jsonwebtoken");
 const Pedido = require("../modelos/pedido");
 const Album = require("../modelos/album");
 const Cliente = require("../modelos/cliente");
@@ -90,7 +91,8 @@ async function crearPagoStripe(datosPago, idPedido) {
       return {
         status: "succeeded",
         mensaje: "Pago realizado correctamente",
-        return_url: `Pedido/PedidoFinalizado?idPedido=${idPedido}`,
+        idPedido: idPedido,
+        return_url: `http://localhost:5317/Pedido/PedidoFinalizado?idPedido=${idPedido}`,
       };
     }
   } catch (error) {
@@ -206,25 +208,17 @@ module.exports = {
         await album.save();
       });
       await pedido.save();
-      // Recuperar cliente por el id del pedido
-      const cliente = await Cliente.findOne({ pedidos: idPedido }).populate([
-        { path: "direcciones", model: "Direccion" },
-        { path: "pedidos", model: "Pedido" },
-      ]);
-      const jwt = await generarJWT(cliente);
-      res
-        .status(200)
-        .send({ 
-          codigo: 0,
-          mensaje: "Pedido actualizado correctamente", 
-          pedido: pedido ,
-          datoscliente: cliente,
-          tokensesion: jwt
-        });
+
+      res.status(200).send({
+        codigo: 0,
+        mensaje: "Pedido actualizado correctamente",
+        pedido: pedido,
+      });
     } catch (error) {
-      res
-        .status(500)
-        .send({ mensaje: "Error al intentar actualizar el pedido" });
+      res.status(500).send({
+        codigo: -1,
+        mensaje: error.message,
+      });
     }
   },
   paypalCallback: async function (req, res) {

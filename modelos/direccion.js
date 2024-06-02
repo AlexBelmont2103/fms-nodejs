@@ -23,7 +23,6 @@ var direccionSchema= new mongoose.Schema(
 
          },
         esPrincipal:{type:Boolean, default:false},
-        esfacturacion:{type:Boolean, default:false},
     }
 );
 
