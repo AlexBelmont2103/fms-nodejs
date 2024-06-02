@@ -303,8 +303,6 @@ module.exports = {
   },
   actualizarAvatar: async function (req, res) {
     try {
-      console.log("datos recibidos en el servidor...", req.body);
-      console.log("imagen recibida en el servidor...", req.file);
       //1ºBorrar la imagen anterior
       await borrarImagen(req.body.idCliente);
       //2ºSubir la nueva imagen
