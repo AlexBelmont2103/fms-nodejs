@@ -270,18 +270,22 @@ module.exports = {
     }
   },
   actualizarDatosCliente: async function (req, res) {
-    try{
-      console.log('datos recibidos en el servidor...',req.payload);
-      console.log('datos recibidos en el servidor...',req.body);
-      let {nombre, apellidos, email} = req.body;
-      let cliente = await Cliente.findByIdAndUpdate(req.payload.idCliente,{
-        nombre: nombre,
-        apellidos: apellidos,
-        "cuenta.email": email
-      },{new: true}).populate([
-        {path: 'direcciones', model: 'Direccion'},
-        {path: 'pedidos', model: 'Pedido'}
-        ]);
+    try {
+      console.log("datos recibidos en el servidor...", req.payload);
+      console.log("datos recibidos en el servidor...", req.body);
+      let { nombre, apellidos, email } = req.body;
+      let cliente = await Cliente.findByIdAndUpdate(
+        req.payload.idCliente,
+        {
+          nombre: nombre,
+          apellidos: apellidos,
+          "cuenta.email": email,
+        },
+        { new: true }
+      ).populate([
+        { path: "direcciones", model: "Direccion" },
+        { path: "pedidos", model: "Pedido" },
+      ]);
       let _jwt = await generarJWT(cliente);
       res.status(200).send({
         codigo: 0,
@@ -291,7 +295,7 @@ module.exports = {
         datoscliente: cliente,
         tokensesion: _jwt,
       });
-    }catch(error){
+    } catch (error) {
       res.status(500).send({
         codigo: 1,
         mensaje: "Error al intentar actualizar datos cliente",
@@ -331,6 +335,103 @@ module.exports = {
       res.status(500).send({
         codigo: 1,
         mensaje: "Error al intentar actualizar avatar",
+        error: error.message,
+        otrosdatos: null,
+        datoscliente: null,
+      });
+    }
+  },
+  agregarDireccion: async function (req, res) {
+    try {
+      console.log("datos recibidos en el servidor...", req.body);
+      let direccion = await new Direccion(req.body).save();
+      let cliente = await Cliente.findByIdAndUpdate(
+        req.payload.idCliente,
+        {
+          $push: { direcciones: direccion._id },
+        },
+        { new: true }
+      ).populate([
+        { path: "direcciones", model: "Direccion" },
+        { path: "pedidos", model: "Pedido" },
+      ]);
+      let _jwt = await generarJWT(cliente);
+      res.status(200).send({
+        codigo: 0,
+        mensaje: "Dirección agregada correctamente",
+        error: null,
+        otrosdatos: null,
+        datoscliente: cliente,
+        tokensesion: _jwt,
+      });
+    } catch (error) {
+      res.status(500).send({
+        codigo: 1,
+        mensaje: "Error al intentar agregar dirección",
+        error: error.message,
+        otrosdatos: null,
+        datoscliente: null,
+      });
+    }
+  },
+  modificarDireccion: async function (req, res) {
+    try {
+      console.log("datos recibidos en el servidor...", req.body);
+      let direccion = await Direccion.findByIdAndUpdate(
+        req.body._id,
+        req.body,
+        { new: true }
+      );
+      let cliente = await Cliente.findById(req.payload.idCliente).populate([
+        { path: "direcciones", model: "Direccion" },
+        { path: "pedidos", model: "Pedido" },
+      ]);
+      let _jwt = await generarJWT(cliente);
+      res.status(200).send({
+        codigo: 0,
+        mensaje: "Dirección modificada correctamente",
+        error: null,
+        otrosdatos: null,
+        datoscliente: cliente,
+        tokensesion: _jwt,
+      });
+    } catch (error) {
+      res.status(500).send({
+        codigo: 1,
+        mensaje: "Error al intentar modificar dirección",
+        error: error.message,
+        otrosdatos: null,
+        datoscliente: null,
+      });
+    }
+  },
+  eliminarDireccion: async function (req, res) {
+    try {
+      console.log("datos recibidos en el servidor...", req.body);
+      let direccion = await Direccion.findByIdAndDelete(req.body.idDireccion);
+      let cliente = await Cliente.findByIdAndUpdate(
+        req.payload.idCliente,
+        {
+          $pull: { direcciones: req.body.idDireccion },
+        },
+        { new: true }
+      ).populate([
+        { path: "direcciones", model: "Direccion" },
+        { path: "pedidos", model: "Pedido" },
+      ]);
+      let _jwt = await generarJWT(cliente);
+      res.status(200).send({
+        codigo: 0,
+        mensaje: "Dirección eliminada correctamente",
+        error: null,
+        otrosdatos: null,
+        datoscliente: cliente,
+        tokensesion: _jwt,
+      });
+    } catch (error) {
+      res.status(500).send({
+        codigo: 1,
+        mensaje: "Error al intentar eliminar dirección",
         error: error.message,
         otrosdatos: null,
         datoscliente: null,

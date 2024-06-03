@@ -35,16 +35,10 @@ router.post("/ComprobarEmail", clienteController.comprobarEmail);
 router.post("/ComprobarLogin", clienteController.comprobarLogin);
 router.post("/Login", clienteController.login);
 router.get("/RecuperarCliente/:id", clienteController.recuperarCliente);
-router.post(
-  "/ActualizarDatosCliente",
-  checkJWT,
-  clienteController.actualizarDatosCliente
-);
-router.post(
-  "/ActualizarAvatar",
-  checkJWT,
-  upload.single("imagenAvatar"),
-  clienteController.actualizarAvatar
-);
+router.post("/ActualizarDatosCliente",checkJWT,clienteController.actualizarDatosCliente);
+router.post("/ActualizarAvatar",checkJWT,upload.single("imagenAvatar"),clienteController.actualizarAvatar);
+router.post("/AgregarDireccion",checkJWT,clienteController.agregarDireccion);
+router.post("/ModificarDireccion",checkJWT,clienteController.modificarDireccion);
+router.post("/EliminarDireccion",checkJWT,clienteController.eliminarDireccion);
 
 module.exports = router;
