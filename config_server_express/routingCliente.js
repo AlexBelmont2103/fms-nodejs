@@ -40,5 +40,6 @@ router.post("/ActualizarAvatar",checkJWT,upload.single("imagenAvatar"),clienteCo
 router.post("/AgregarDireccion",checkJWT,clienteController.agregarDireccion);
 router.post("/ModificarDireccion",checkJWT,clienteController.modificarDireccion);
 router.post("/EliminarDireccion",checkJWT,clienteController.eliminarDireccion);
+router.post("/CancelarPedido",checkJWT,clienteController.cancelarPedido);
 
 module.exports = router;

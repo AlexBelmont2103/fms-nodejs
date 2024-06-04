@@ -438,4 +438,36 @@ module.exports = {
       });
     }
   },
+  cancelarPedido: async function (req, res) {
+    try{
+      console.log("datos recibidos en el servidor...", req.body);
+      let pedido = await Pedido.findByIdAndUpdate(req.body.idPedido,{
+        estadoPedido: "Cancelado"
+      },{new:true});
+
+      let cliente = await Cliente.findById(req.payload.idCliente).populate([
+        { path: "direcciones", model: "Direccion" },
+        { path: "pedidos", model: "Pedido" },
+      ]);
+      let _jwt = await generarJWT(cliente);
+      res.status(200).send({
+        codigo: 0,
+        mensaje: "Pedido cancelado correctamente",
+        error: null,
+        otrosdatos: null,
+        datoscliente: cliente,
+        tokensesion: _jwt,
+      });
+
+    }catch(error){
+      res.status(500).send({
+        codigo: 1,
+        mensaje: "Error al intentar cancelar pedido",
+        error: error.message,
+        otrosdatos: null,
+        datoscliente: null,
+      });
+    }
+
+  },
 };
