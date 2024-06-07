@@ -5,6 +5,7 @@ module.exports = {
     try {
       //Recuperamos todos los generos en un array
       let generos = await Genero.find();
+      console.log("Generos recuperados: ", generos);
       res.status(200).send({
         codigo: 0,
         mensaje: "Generos recuperados",
@@ -13,6 +14,7 @@ module.exports = {
         datosgeneros: generos,
       });
     } catch (error) {
+      console.log("Error al intentar recuperar generos: ", error);
       res.status(500).send({
         codigo: 1,
         mensaje: "Error al intentar recuperar generos",
@@ -32,7 +34,9 @@ module.exports = {
         otrosdatos: null,
         datosalbumes: albumes,
       });
+      console.log("Albumes recuperados: ", albumes);
     } catch (error) {
+      console.log("Error al intentar recuperar albumes: ", error);
       res.status(500).send({
         codigo: 1,
         mensaje: "Error al intentar recuperar albumes",
