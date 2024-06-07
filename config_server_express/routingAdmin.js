@@ -4,6 +4,13 @@ const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage() });
 
 const adminController = require("../controllers/adminController");
-router.get('/RecuperarColecciones', adminController.recuperarColecciones);
+router.get('/RecuperarGeneros', adminController.recuperarGeneros);
+router.get('/RecuperarAlbumes', adminController.recuperarAlbumes);
+router.post('/AgregarGenero', adminController.agregarGenero);
+router.post('/ModificarGenero', adminController.modificarGenero);
+router.post('/EliminarGenero', adminController.eliminarGenero);
+router.post('/AgregarAlbum', adminController.agregarAlbum);
+router.post('/ModificarAlbum', adminController.modificarAlbum);
+router.post('/EliminarAlbum', adminController.eliminarAlbum);
 
 module.exports = router;

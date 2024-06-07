@@ -25,11 +25,7 @@ async function checkJWT(req, res, next) {
 }
 const upload = multer({ storage: multer.memoryStorage() });
 const clienteController = require("../controllers/clienteController");
-router.post(
-  "/Registro",
-  upload.single("imagenAvatar"),
-  clienteController.registro
-);
+router.post("/Registro",upload.single("imagenAvatar"),clienteController.registro);
 router.get("/ActivarCuenta/:id", clienteController.activarCuenta);
 router.post("/ComprobarEmail", clienteController.comprobarEmail);
 router.post("/ComprobarLogin", clienteController.comprobarLogin);

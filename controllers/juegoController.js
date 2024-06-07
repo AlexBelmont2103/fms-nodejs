@@ -45,9 +45,9 @@ module.exports = {
         process.env.PLAYLIST_ID,
         (options = {
           offset: 0,
-          limit: 10,
         })
       );
+      console.log("Datos del juego...", datosJuego.body);
       const tracksSimplificados = datosJuego.body.tracks.items.map((track) => {
         return {
           id: track.track.id,

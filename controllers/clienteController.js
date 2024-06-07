@@ -91,7 +91,6 @@ module.exports = {
 
       //2º manejar la subida de la imagen
       const urlImagen = await subirImagen(req);
-      console.log("urlImagen", urlImagen);
 
       // Actualizar el cliente con la url de la imagen
       cliente.cuenta.imagenAvatar = urlImagen;
@@ -249,7 +248,6 @@ module.exports = {
       ]);
       if (!cliente) throw new Error("Cliente no encontrado");
       let _jwt = await generarJWT(cliente);
-      console.log("cliente recuperado...", cliente);
       res.status(200).send({
         codigo: 0,
         mensaje: "Cliente recuperado correctamente",
