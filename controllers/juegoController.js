@@ -1,21 +1,4 @@
-const SpotifyWebApi = require("spotify-web-api-node");
-const spotifyApi = new SpotifyWebApi({
-  clientId: process.env.SPOTIFY_CLIENT_ID,
-  clientSecret: process.env.SPOTIFY_CLIENT_SECRET,
-  redirectUri: "http://localhost:5000/spotify/callback",
-});
 //#region funciones
-// Función para renovar el token
-const renovarToken = () => {
-  spotifyApi.clientCredentialsGrant().then(
-    function (data) {
-      spotifyApi.setAccessToken(data.body["access_token"]);
-    },
-    function (err) {
-      console.log("Algo salió mal al obtener el token de acceso", err);
-    }
-  );
-};
 //Funcion para elegir cuatro tracks aleatorios
 function elegirCuatroTracksAleatorios(tracks) {
   let tracksAleatorios = [];
@@ -32,22 +15,16 @@ function elegirCuatroTracksAleatorios(tracks) {
 }
 
 //#endregion
-// Renovar el token inmediatamente al iniciar
-renovarToken();
-
-// Renovar el token cada 10 minutos
-setInterval(renovarToken, 1000 * 60 * 10);
 
 module.exports = {
   empezarJuego: async function (req, res) {
     try {
-      const datosJuego = await spotifyApi.getPlaylistTracks(
+      const datosJuego = await req.spotifyApi.getPlaylistTracks(
         process.env.PLAYLIST_ID,
         (options = {
           offset: 0,
         })
       );
-      console.log("Datos del juego...", datosJuego.body);
       const tracksSimplificados = datosJuego.body.tracks.items.map((track) => {
         return {
           id: track.track.id,

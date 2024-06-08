@@ -1,11 +1,11 @@
 const Genero = require("../modelos/genero");
 const Album = require("../modelos/album");
+
 module.exports = {
   recuperarGeneros: async function (req, res) {
     try {
       //Recuperamos todos los generos en un array
       let generos = await Genero.find();
-      console.log("Generos recuperados: ", generos);
       res.status(200).send({
         codigo: 0,
         mensaje: "Generos recuperados",
@@ -34,7 +34,6 @@ module.exports = {
         otrosdatos: null,
         datosalbumes: albumes,
       });
-      console.log("Albumes recuperados: ", albumes);
     } catch (error) {
       console.log("Error al intentar recuperar albumes: ", error);
       res.status(500).send({
@@ -78,7 +77,6 @@ module.exports = {
         otrosdatos: null,
         datosalbumes: albumes,
       });
-      console.log("Albumes recuperados: ", albumes);
     } catch (error) {
       res.status(500).send({
         codigo: 1,
@@ -86,6 +84,32 @@ module.exports = {
         error: error.message,
         otrosdatos: null,
         datosalbumes: null,
+      });
+    }
+  },
+  recuperarAlbum: async function (req, res) {
+    try {
+      let id = req.params.id;
+      let album = await Album.findById(id);
+      //Buscamos en spotify un album con el artista y el nombre
+      let albumSpotify = await req.spotifyApi.searchAlbums(
+        "album:" + album.nombre + " artist:" + album.artista
+      );
+      let token = req.spotifyApi.getAccessToken();
+      res.status(200).send({
+        codigo: 0,
+        mensaje: "Album recuperado",
+        datosalbum: album,
+        datosSpotify: albumSpotify.body.albums.items[0],
+        tokenSpotify:token,
+      });
+    } catch (error) {
+      res.status(500).send({
+        codigo: 1,
+        mensaje: "Error al intentar recuperar album",
+        error: error.message,
+        otrosdatos: null,
+        datosalbum: null,
       });
     }
   },

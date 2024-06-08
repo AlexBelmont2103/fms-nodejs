@@ -57,7 +57,6 @@ function getPublicUrl(bucket, filename) {
 
 //#endregion
 
-
 module.exports = {
   recuperarGeneros: async function (req, res) {
     try {
@@ -79,7 +78,7 @@ module.exports = {
       });
     }
   },
-  recuperarAlbumes  : async function (req, res) {
+  recuperarAlbumes: async function (req, res) {
     try {
       const albumes = await Album.find();
       res.status(200).send({
@@ -99,10 +98,182 @@ module.exports = {
       });
     }
   },
-  agregarGenero: async function (req, res) {},
-  modificarGenero: async function (req, res) {},
-  eliminarGenero: async function (req, res) {},
-  agregarAlbum: async function (req, res) {},
-  modificarAlbum: async function (req, res) {},
-  eliminarAlbum: async function (req, res) {},
+  agregarGenero: async function (req, res) {
+    try {
+      let genero = new Genero({
+        nombre: req.body.nombre,
+      });
+      await genero.save();
+      let generos = await Genero.find();
+      res.status(200).send({
+        codigo: 0,
+        mensaje: "Genero agregado",
+        error: null,
+        otrosdatos: null,
+        datosgeneros: generos,
+      });
+    } catch (error) {
+      console.log("Error en AdminRESTService.agregarGenero", error);
+      res.status(500).send({
+        codigo: 1,
+        mensaje: "Error al intentar agregar genero",
+        error: error.message,
+        otrosdatos: null,
+        datosgeneros: null,
+      });
+    }
+  },
+  modificarGenero: async function (req, res) {
+    try {
+      let genero = await Genero.findByIdAndUpdate(req.body._id, {
+        nombre: req.body.nombre,
+      });
+      let generos = await Genero.find();
+      res.status(200).send({
+        codigo: 0,
+        mensaje: "Genero modificado",
+        error: null,
+        otrosdatos: null,
+        datosgeneros: generos,
+      });
+    } catch (error) {
+      console.log("Error en AdminRESTService.modificarGenero", error);
+      res.status(500).send({
+        codigo: 1,
+        mensaje: "Error al intentar modificar genero",
+        error: error.message,
+        otrosdatos: null,
+        datosgeneros: null,
+      });
+    }
+  },
+  eliminarGenero: async function (req, res) {
+    try {
+      console.log(req.body);
+      let genero = await Genero.findByIdAndDelete(req.body.idGenero);
+      let generos = await Genero.find();
+      res.status(200).send({
+        codigo: 0,
+        mensaje: "Genero eliminado",
+        error: null,
+        otrosdatos: null,
+        datosgeneros: generos,
+      });
+    } catch (error) {
+      console.log("Error en AdminRESTService.eliminarGenero", error);
+      res.status(500).send({
+        codigo: 1,
+        mensaje: "Error al intentar eliminar genero",
+        error: error.message,
+        otrosdatos: null,
+        datosgeneros: null,
+      });
+    }
+  },
+  agregarAlbum: async function (req, res) {
+    try {
+      console.log("Datos recibidos...", req.body);
+      console.log("Archivo recibido...", req.file);
+      //1º Subir la imagen a Firebase Storage
+      let urlImagen = await subirImagen(req);
+      console.log("URL de la imagen subida...", urlImagen);
+      //2º Crear el documento Album
+      let album = new Album({
+        nombre: req.body.nombre,
+        artista: req.body.artista,
+        anhoLanzamiento: req.body.anhoLanzamiento,
+        genero: req.body.genero,
+        imagenPortada: urlImagen,
+        numCanciones: req.body.numCanciones,
+        precio: req.body.precio,
+        stock: req.body.stock,
+      });
+      await album.save();
+      let albumes = await Album.find();
+      res.status(200).send({
+        codigo: 0,
+        mensaje: "Album agregado",
+        error: null,
+        otrosdatos: null,
+        datosalbumes: albumes,
+      });
+    } catch (error) {
+      console.log("Error en AdminRESTService.agregarAlbum", error);
+      res.status(500).send({
+        codigo: 1,
+        mensaje: "Error al intentar agregar album",
+        error: error.message,
+        otrosdatos: null,
+        datosalbumes: null,
+      });
+    }
+  },
+  modificarAlbum: async function (req, res) {
+    try {
+      console.log("Datos recibidos...", req.body);
+      //1º Comprobar si se ha subido una nueva imagen
+      if (req.file) {
+        console.log("Archivo recibido...", req.file);
+        //Borrar la imagen anterior
+        let album = await Album.findById(req.body._id);
+        await borrarImagen(album.imagenPortada);
+        //Subir la nueva imagen
+        let urlImagen = await subirImagen(req);
+        let albumNuevo = await Album.findByIdAndUpdate(req.body._id, {
+          imagenPortada: urlImagen,
+        })
+      }
+      //Modificar el documento Album
+      let album = await Album.findByIdAndUpdate(req.body._id, {
+        nombre: req.body.nombre,
+        artista: req.body.artista,
+        anhoLanzamiento: req.body.anhoLanzamiento,
+        genero: req.body.genero,
+        numCanciones: req.body.numCanciones,
+        precio: req.body.precio,
+        stock: req.body.stock,
+      });
+      let albumes = await Album.find();
+      res.status(200).send({
+        codigo: 0,
+        mensaje: "Album modificado",
+        error: null,
+        otrosdatos: null,
+        datosalbumes: albumes,
+      });
+    } catch (error) {
+      console.log("Error en AdminRESTService.modificarAlbum", error);
+      res.status(500).send({
+        codigo: 1,
+        mensaje: "Error al intentar modificar album",
+        error: error.message,
+        otrosdatos: null,
+        datosalbumes: null,
+      });
+    }
+  },
+  eliminarAlbum: async function (req, res) {
+    try {
+      console.log(req.body);
+      let album = await Album.findByIdAndDelete(req.body.idAlbum);
+      await borrarImagen(album.imagenPortada);
+      let albumes = await Album.find();
+      res.status(200).send({
+        codigo: 0,
+        mensaje: "Album eliminado",
+        error: null,
+        otrosdatos: null,
+        datosalbumes: albumes,
+      });
+    } catch (error) {
+      console.log("Error en AdminRESTService.eliminarAlbum", error);
+      res.status(500).send({
+        codigo: 1,
+        mensaje: "Error al intentar eliminar album",
+        error: error.message,
+        otrosdatos: null,
+        datosalbumes: null,
+      });
+    }
+  },
 };
