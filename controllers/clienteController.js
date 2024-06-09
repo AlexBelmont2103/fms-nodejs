@@ -486,6 +486,7 @@ module.exports = {
         { path: "pedidos", model: "Pedido" },
         { path: "favoritos", model: "Album"}
       ]);
+      console.log("cliente", cliente);
       let _jwt = await generarJWT(cliente);
       res.status(200).send({
         codigo: 0,
@@ -516,6 +517,7 @@ module.exports = {
         { path: "pedidos", model: "Pedido" },
         { path: "favoritos", model: "Album"}
       ]);
+      console.log("cliente", cliente);
       let _jwt = await generarJWT(cliente);
       res.status(200).send({
         codigo: 0,
