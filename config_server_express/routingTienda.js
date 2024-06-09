@@ -8,4 +8,5 @@ router.get("/RecuperarAlbumesArtista/:artista", tiendaController.recuperarAlbume
 router.get("/RecuperarAlbum/:id", tiendaController.recuperarAlbum);
 router.get("/RecuperarComentariosAlbum/:id", tiendaController.recuperarComentariosAlbum);
 router.post("/InsertarComentarioAlbum", tiendaController.insertarComentarioAlbum);
+router.get("/BuscarAlbumes/:busqueda", tiendaController.buscarAlbumes);
 module.exports = router;

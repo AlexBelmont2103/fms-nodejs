@@ -99,7 +99,7 @@ module.exports = {
       );
       let albumIdSpotify = albumSpotify.body.albums.items[0].id;
       let pistasDelAlbum = await req.spotifyApi.getAlbumTracks(albumIdSpotify);
-      
+
       console.log("Datos Spotify: ", albumSpotify.body.albums.items[0]);
       res.status(200).send({
         codigo: 0,
@@ -167,6 +167,35 @@ module.exports = {
         error: error.message,
         otrosdatos: null,
         datoscomentarios: null,
+      });
+    }
+  },
+  buscarAlbumes: async function (req, res) {
+    try {
+      console.log("datos recibidos en el servidor...", req.params);
+      //Recuperamos albumes con nombre o artista que contenga la cadena de búsqueda
+      let albumes = await Album.find({
+        $or: [
+          { nombre: { $regex: req.params.busqueda, $options: "i" } },
+          { artista: { $regex: req.params.busqueda, $options: "i" } },
+        ],
+      });
+      //Solo enviamos los 5 primeros resultados
+      albumes = albumes.slice(0, 5);
+      res.status(200).send({
+        codigo: 0,
+        mensaje: "Álbumes recuperados correctamente",
+        error: null,
+        otrosdatos: null,
+        datosalbumes: albumes,
+      });
+    } catch (error) {
+      res.status(500).send({
+        codigo: 1,
+        mensaje: "Error al intentar buscar álbumes",
+        error: error.message,
+        otrosdatos: null,
+        datosalbumes: null,
       });
     }
   },
