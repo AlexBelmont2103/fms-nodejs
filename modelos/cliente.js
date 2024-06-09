@@ -18,6 +18,9 @@ var clienteSchema=new mongoose.Schema(
         ],
         pedidos:[
             {type:mongoose.Schema.Types.ObjectId, ref:'Pedido'}
+        ],
+        favoritos:[
+            {type:mongoose.Schema.Types.ObjectId, ref:'Album'}
         ]
     }
 );

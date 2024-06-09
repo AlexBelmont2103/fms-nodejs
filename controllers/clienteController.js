@@ -211,6 +211,7 @@ module.exports = {
       let cliente = await Cliente.findOne({ "cuenta.email": email }).populate([
         { path: "direcciones", model: "Direccion" },
         { path: "pedidos", model: "Pedido" },
+        { path: "favoritos", model: "Album"}
       ]);
       if (!cliente) throw new Error("Email o contraseña incorrectos");
       //2º Comprobar si la contraseña es correcta
@@ -245,6 +246,7 @@ module.exports = {
       let cliente = await Cliente.findById(req.params.id).populate([
         { path: "direcciones", model: "Direccion" },
         { path: "pedidos", model: "Pedido" },
+        { path: "favoritos", model: "Album" }
       ]);
       if (!cliente) throw new Error("Cliente no encontrado");
       let _jwt = await generarJWT(cliente);
@@ -283,6 +285,7 @@ module.exports = {
       ).populate([
         { path: "direcciones", model: "Direccion" },
         { path: "pedidos", model: "Pedido" },
+        { path: "favoritos", model: "Album" }
       ]);
       let _jwt = await generarJWT(cliente);
       res.status(200).send({
@@ -314,6 +317,7 @@ module.exports = {
       let cliente = await Cliente.findById(req.body.idCliente).populate([
         { path: "direcciones", model: "Direccion" },
         { path: "pedidos", model: "Pedido" },
+        { path: "favoritos", model: "Album" }
       ]);
       console.log("Url de la imagen anterior...", cliente.cuenta.imagenAvatar);
       console.log("Url de la imagen nueva...", urlImagen);
@@ -352,6 +356,7 @@ module.exports = {
       ).populate([
         { path: "direcciones", model: "Direccion" },
         { path: "pedidos", model: "Pedido" },
+        { path: "favoritos", model: "Album" }
       ]);
       let _jwt = await generarJWT(cliente);
       res.status(200).send({
@@ -383,6 +388,7 @@ module.exports = {
       let cliente = await Cliente.findById(req.payload.idCliente).populate([
         { path: "direcciones", model: "Direccion" },
         { path: "pedidos", model: "Pedido" },
+        { path: "favoritos", model: "Album" }
       ]);
       let _jwt = await generarJWT(cliente);
       res.status(200).send({
@@ -416,6 +422,7 @@ module.exports = {
       ).populate([
         { path: "direcciones", model: "Direccion" },
         { path: "pedidos", model: "Pedido" },
+        { path: "favoritos", model: "Album" }
       ]);
       let _jwt = await generarJWT(cliente);
       res.status(200).send({
@@ -446,6 +453,7 @@ module.exports = {
       let cliente = await Cliente.findById(req.payload.idCliente).populate([
         { path: "direcciones", model: "Direccion" },
         { path: "pedidos", model: "Pedido" },
+        { path: "favoritos", model: "Album" }
       ]);
       let _jwt = await generarJWT(cliente);
       res.status(200).send({
@@ -468,4 +476,64 @@ module.exports = {
     }
 
   },
+  agregarFavorito: async function (req, res) {
+    try{
+      console.log("datos recibidos en el servidor...", req.body);
+      let cliente = await Cliente.findByIdAndUpdate(req.payload.idCliente,{
+        $push: {favoritos: req.body.idAlbum}
+      },{new:true}).populate([
+        { path: "direcciones", model: "Direccion" },
+        { path: "pedidos", model: "Pedido" },
+        { path: "favoritos", model: "Album"}
+      ]);
+      let _jwt = await generarJWT(cliente);
+      res.status(200).send({
+        codigo: 0,
+        mensaje: "Álbum añadido a favoritos correctamente",
+        error: null,
+        otrosdatos: null,
+        datoscliente: cliente,
+        tokensesion: _jwt,
+      });
+
+    }catch(error){
+      res.status(500).send({
+        codigo: 1,
+        mensaje: "Error al intentar añadir álbum a favoritos",
+        error: error.message,
+        otrosdatos: null,
+        datoscliente: null,
+      });
+    }
+  },
+  eliminarFavorito: async function (req, res) {
+    try{
+      console.log("datos recibidos en el servidor...", req.body);
+      let cliente = await Cliente.findByIdAndUpdate(req.payload.idCliente,{
+        $pull: {favoritos: req.body.idAlbum}
+      },{new:true}).populate([
+        { path: "direcciones", model: "Direccion" },
+        { path: "pedidos", model: "Pedido" },
+        { path: "favoritos", model: "Album"}
+      ]);
+      let _jwt = await generarJWT(cliente);
+      res.status(200).send({
+        codigo: 0,
+        mensaje: "Álbum eliminado de favoritos correctamente",
+        error: null,
+        otrosdatos: null,
+        datoscliente: cliente,
+        tokensesion: _jwt,
+      });
+
+    }catch(error){
+      res.status(500).send({
+        codigo: 1,
+        mensaje: "Error al intentar eliminar álbum de favoritos",
+        error: error.message,
+        otrosdatos: null,
+        datoscliente: null,
+      });
+    }
+  }
 };
