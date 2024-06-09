@@ -11,6 +11,7 @@ const spotifyApi = new SpotifyWebApi({
 const renovarToken = () => {
   spotifyApi.clientCredentialsGrant().then(
     function (data) {
+      
       spotifyApi.setAccessToken(data.body["access_token"]);
     },
     function (err) {

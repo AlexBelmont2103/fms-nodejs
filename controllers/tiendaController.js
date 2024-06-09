@@ -95,13 +95,17 @@ module.exports = {
       let albumSpotify = await req.spotifyApi.searchAlbums(
         "album:" + album.nombre + " artist:" + album.artista
       );
+      let albumIdSpotify = albumSpotify.body.albums.items[0].id;
+      let pistasDelAlbum = await req.spotifyApi.getAlbumTracks(albumIdSpotify);
       let token = req.spotifyApi.getAccessToken();
+      console.log("Datos Spotify: ", albumSpotify.body.albums.items[0]);
       res.status(200).send({
         codigo: 0,
         mensaje: "Album recuperado",
         datosalbum: album,
         datosSpotify: albumSpotify.body.albums.items[0],
-        tokenSpotify:token,
+        pistasSpotify: pistasDelAlbum.body.items,
+        tokenSpotify: token,
       });
     } catch (error) {
       res.status(500).send({
