@@ -6,4 +6,6 @@ router.get("/RecuperarAlbumes", tiendaController.recuperarAlbumes);
 router.get("/RecuperarAlbumesGenero/:genero", tiendaController.recuperarAlbumesGenero);
 router.get("/RecuperarAlbumesArtista/:artista", tiendaController.recuperarAlbumesArtista);
 router.get("/RecuperarAlbum/:id", tiendaController.recuperarAlbum);
+router.get("/RecuperarComentariosAlbum/:id", tiendaController.recuperarComentariosAlbum);
+router.post("/InsertarComentarioAlbum", tiendaController.insertarComentarioAlbum);
 module.exports = router;

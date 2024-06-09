@@ -1,5 +1,6 @@
 const Genero = require("../modelos/genero");
 const Album = require("../modelos/album");
+const Comentario = require("../modelos/comentario");
 
 module.exports = {
   recuperarGeneros: async function (req, res) {
@@ -91,13 +92,14 @@ module.exports = {
     try {
       let id = req.params.id;
       let album = await Album.findById(id);
+      let comentarios = await Comentario.find({ idAlbum: id });
       //Buscamos en spotify un album con el artista y el nombre
       let albumSpotify = await req.spotifyApi.searchAlbums(
         "album:" + album.nombre + " artist:" + album.artista
       );
       let albumIdSpotify = albumSpotify.body.albums.items[0].id;
       let pistasDelAlbum = await req.spotifyApi.getAlbumTracks(albumIdSpotify);
-      let token = req.spotifyApi.getAccessToken();
+      
       console.log("Datos Spotify: ", albumSpotify.body.albums.items[0]);
       res.status(200).send({
         codigo: 0,
@@ -105,7 +107,7 @@ module.exports = {
         datosalbum: album,
         datosSpotify: albumSpotify.body.albums.items[0],
         pistasSpotify: pistasDelAlbum.body.items,
-        tokenSpotify: token,
+        datosComentario: comentarios,
       });
     } catch (error) {
       res.status(500).send({
@@ -114,6 +116,57 @@ module.exports = {
         error: error.message,
         otrosdatos: null,
         datosalbum: null,
+      });
+    }
+  },
+  recuperarComentariosAlbum: async function (req, res) {
+    try {
+      let id = req.params.id;
+      let album = await Album.findById(id);
+      res.status(200).send({
+        codigo: 0,
+        mensaje: "Comentarios recuperados",
+        error: null,
+        otrosdatos: null,
+        datoscomentarios: album.comentarios,
+      });
+    } catch (error) {
+      res.status(500).send({
+        codigo: 1,
+        mensaje: "Error al intentar recuperar comentarios",
+        error: error.message,
+        otrosdatos: null,
+        datoscomentarios: null,
+      });
+    }
+  },
+  insertarComentarioAlbum: async function (req, res) {
+    try {
+      console.log("req.body: ", req.body);
+      let id = req.body.id;
+      let comentario = new Comentario({
+        nombre: req.body.nombre,
+        texto: req.body.texto,
+        idCliente: req.body.idCliente,
+        idAlbum: req.body.idAlbum,
+        imagenAvatar: req.body.imagenAvatar,
+      });
+      await comentario.save();
+      let recuperarComentariosAlbum = await Comentario.find({ idAlbum: id });
+      res.status(200).send({
+        codigo: 0,
+        mensaje: "Comentario insertado",
+        error: null,
+        otrosdatos: null,
+        datoscomentarios: recuperarComentariosAlbum,
+      });
+    } catch (error) {
+      res.status(500).send({
+        codigo: 1,
+        mensaje: "Error al intentar insertar comentario",
+        error: error.message,
+        otrosdatos: null,
+        datoscomentarios: null,
       });
     }
   },
