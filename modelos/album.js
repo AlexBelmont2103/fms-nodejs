@@ -10,6 +10,7 @@ var albumSchema=new mongoose.Schema(
         numCanciones: {type: Number, required:[true,'* Número de canciones obligatorio']},
         precio: {type: Number, required:[true,'* Precio obligatorio']},
         stock: {type: Number, required:[true,'* Stock obligatorio']},
+        descripcion: {type: String, maxlenght:[2000,'*Maximo 2000 caracteres']},
     }
 );
 
