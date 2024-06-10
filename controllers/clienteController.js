@@ -537,5 +537,48 @@ module.exports = {
         datoscliente: null,
       });
     }
-  }
+  },
+  hacerDireccionPrincipal: async function (req, res) {
+    try{
+      console.log("datos recibidos en el servidor...", req.body);
+      let cliente = await Cliente.findById(req.payload.idCliente).populate([
+        { path: "direcciones", model: "Direccion" },
+        { path: "pedidos", model: "Pedido" },
+        { path: "favoritos", model: "Album"}
+      ]);
+      console.log("cliente", cliente);
+      //1º Recorrer las direcciones del cliente y poner a false la principal
+      cliente.direcciones.forEach(async (direccion)=>{
+        direccion.esPrincipal = false;
+        await direccion.save();
+      });
+      //2º Poner a true la dirección principal
+      let direccion = await Direccion.findByIdAndUpdate
+      (req.body.idDireccion,{
+        esPrincipal: true
+      },{new:true});
+      let nueoCliente = await Cliente.findById(req.payload.idCliente).populate([
+        { path: "direcciones", model: "Direccion" },
+        { path: "pedidos", model: "Pedido" },
+        { path: "favoritos", model: "Album"}
+      ]);
+      let _jwt = await generarJWT(nueoCliente);
+      res.status(200).send({
+        codigo: 0,
+        mensaje: "Dirección principal actualizada correctamente",
+        error: null,
+        otrosdatos: null,
+        datoscliente: nueoCliente,
+        tokensesion: _jwt,
+      });
+    }catch(error){
+      res.status(500).send({
+        codigo: 1,
+        mensaje: "Error al intentar hacer dirección principal",
+        error: error.message,
+        otrosdatos: null,
+        datoscliente: null,
+      });
+    }
+  },
 };

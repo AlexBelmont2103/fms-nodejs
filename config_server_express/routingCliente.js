@@ -39,5 +39,6 @@ router.post("/EliminarDireccion",checkJWT,clienteController.eliminarDireccion);
 router.post("/CancelarPedido",checkJWT,clienteController.cancelarPedido);
 router.post("/AgregarFavorito",checkJWT,clienteController.agregarFavorito);
 router.post("/EliminarFavorito",checkJWT,clienteController.eliminarFavorito);
+router.post("/HacerDireccionPrincipal",checkJWT,clienteController.hacerDireccionPrincipal);
 
 module.exports = router;
