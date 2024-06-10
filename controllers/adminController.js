@@ -187,6 +187,7 @@ module.exports = {
         numCanciones: req.body.numCanciones,
         precio: req.body.precio,
         stock: req.body.stock,
+        desºcripcion: req.body.descripcion,
       });
       await album.save();
       let albumes = await Album.find();
@@ -232,6 +233,7 @@ module.exports = {
         numCanciones: req.body.numCanciones,
         precio: req.body.precio,
         stock: req.body.stock,
+        descripcion: req.body.descripcion,
       });
       let albumes = await Album.find();
       res.status(200).send({
