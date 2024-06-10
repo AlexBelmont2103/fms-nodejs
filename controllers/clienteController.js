@@ -537,5 +537,5 @@ module.exports = {
         datoscliente: null,
       });
     }
-  },
+  }
 };
